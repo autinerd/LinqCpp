@@ -46,7 +46,6 @@ public:
 	Queryable<T> Intersect(Queryable<T> second);
 	T Last();
 	T Last(std::function<bool(T)> predicate);
-
 	void Remove(T item);
 	void RemoveAll(T item);
 	void RemoveAt(int index);
@@ -59,6 +58,7 @@ public:
 	Queryable<T> Take(int number);
 	Queryable<T> TakeWhile(std::function<bool(T)> predicate);
 	std::vector<T> ToVector();
+	Queryable<T> Union(Queryable<T> second);
 	Queryable<T> Where(std::function<bool(T)> predicate);
 	template <class TSecond, class TResult>
 	Queryable<TResult> Zip(Queryable<TSecond> second, std::function<TResult(T, TSecond)> resultSelector);
@@ -537,6 +537,27 @@ template<class T>
 inline std::vector<T> Queryable<T>::ToVector()
 {
 	return _vector;
+}
+
+template<class T>
+inline Queryable<T> Queryable<T>::Union(Queryable<T> second)
+{
+	Queryable<T> q(std::vector<T>());
+	for (T item : this->ToVector())
+	{
+		if (!q.Contains(item))
+		{
+			q.Add(item);
+		}
+	}
+	for (T item : second.ToVector())
+	{
+		if (!q.Contains(item))
+		{
+			q.Add(item);
+		}
+	}
+	return q;
 }
 
 template<class T>
