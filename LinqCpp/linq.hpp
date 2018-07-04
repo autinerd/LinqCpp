@@ -14,8 +14,11 @@ class Queryable
 {
 public:
 	Queryable(std::vector<T> vector_);
+	Queryable();
 	~Queryable();
-	T operator[](int index);
+	Queryable<T> operator=(Queryable<T> second);
+	T &operator[](size_t index);
+	T const & operator[](size_t index) const;
 	bool operator==(Queryable<T> second);
 	void Add(T item);
 	void AddRange(std::vector<T> list);
@@ -34,8 +37,9 @@ public:
 	template <class TOutput>
 	Queryable<TOutput> ConvertAll(std::function<TOutput(T)> converter);
 	bool Contains(T item);
-	int Count();
-	int Count(std::function<bool(T)> predicate);
+	size_t Count();
+	size_t Count() const;
+	size_t Count(std::function<bool(T)> predicate);
 	Queryable<T> Distinct();
 	T ElementAt(int number);
 	Queryable<T> Except(Queryable<T> second);
@@ -72,13 +76,31 @@ inline Queryable<T>::Queryable(std::vector<T> vector_) : _vector(vector_)
 
 }
 
+template<class T>
+inline Queryable<T>::Queryable()
+{
+	_vector = std::vector<T>();
+}
+
 template <class T>
 Queryable<T>::~Queryable()
 {
 }
 
 template<class T>
-inline T Queryable<T>::operator[](int index)
+inline Queryable<T> Queryable<T>::operator=(Queryable<T> second)
+{
+	return Queryable<T>(second.ToVector());
+}
+
+template<class T>
+inline T &Queryable<T>::operator[](size_t index)
+{
+	return _vector[index];
+}
+
+template<class T>
+inline T const & Queryable<T>::operator[](size_t index) const
 {
 	return _vector[index];
 }
@@ -92,7 +114,7 @@ inline bool Queryable<T>::operator==(Queryable<T> second)
 template<class T>
 inline void Queryable<T>::Add(T item)
 {
-	_vector.insert(_vector.end(), item);
+	_vector.push_back(item);
 }
 
 template<class T>
@@ -160,7 +182,7 @@ template<class T>
 template<class TOutput>
 inline Queryable<TOutput> Queryable<T>::ConvertAll(std::function<TOutput(T)> converter)
 {
-	Queryable<TOutput> q(std::vector<TOutput>());
+	Queryable<TOutput> q;
 	for (T item : _vector)
 	{
 		q.Add(converter(item));
@@ -243,13 +265,19 @@ inline bool Queryable<T>::Contains(T item)
 }
 
 template<class T>
-inline int Queryable<T>::Count()
+inline size_t Queryable<T>::Count()
 {
 	return _vector.size();
 }
 
 template<class T>
-inline int Queryable<T>::Count(std::function<bool(T)> predicate)
+inline size_t Queryable<T>::Count() const
+{
+	return _vector.size();
+}
+
+template<class T>
+inline size_t Queryable<T>::Count(std::function<bool(T)> predicate)
 {
 	int i = 0;
 	for (T item : _vector)
