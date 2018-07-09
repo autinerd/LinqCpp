@@ -21,8 +21,8 @@ public:
 	T const & operator[](size_t index) const;
 	bool operator==(Queryable<T> second);
 	void Add(T item);
-	void AddRange(std::vector<T> list);
-	void AddRange(Queryable<T> list);
+	void AddRange(std::vector<T> & list);
+	void AddRange(Queryable<T> && list);
 	T Aggregate(std::function<T(T, T)> func);
 	template <class TAggregate>
 	TAggregate Aggregate(TAggregate seed, std::function<TAggregate(TAggregate, T)> func);
@@ -36,33 +36,34 @@ public:
 	Queryable<T> Concat(Queryable<T> second);
 	template <class TOutput>
 	Queryable<TOutput> ConvertAll(std::function<TOutput(T)> converter);
-	bool Contains(T item);
+	bool Contains(T const & item) const;
 	size_t Count();
 	size_t Count() const;
-	size_t Count(std::function<bool(T)> predicate);
+	size_t Count(std::function<bool(T)> predicate) const;
 	Queryable<T> Distinct();
 	T ElementAt(int number);
 	Queryable<T> Except(Queryable<T> second);
-	T First();
-	T First(std::function<bool(T)> predicate);
+	T &First();
+	T &First(std::function<bool(T)> predicate);
 	int IndexOf(T item);
 	void Insert(int index, T item);
 	Queryable<T> Intersect(Queryable<T> second);
-	T Last();
-	T Last(std::function<bool(T)> predicate);
+	T &Last();
+	T &Last(std::function<bool(T)> predicate);
 	void Remove(T item);
 	void RemoveAll(T item);
 	void RemoveAt(int index);
 	T Sum();
 	bool SequenceEqual(Queryable<T> second);
 	bool SequenceEqual(Queryable<T> second, IEqualityComparer<T> comp);
-	T Single();
+	T &Single();
 	Queryable<T> Skip(int number);
 	Queryable<T> SkipWhile(std::function<bool(T)> predicate);
 	Queryable<T> Take(int number);
 	Queryable<T> TakeWhile(std::function<bool(T)> predicate);
+	std::vector<T> ToVector() const;
 	std::vector<T> ToVector();
-	Queryable<T> Union(Queryable<T> second);
+	Queryable<T> Union(Queryable<T> const & second) const;
 	Queryable<T> Where(std::function<bool(T)> predicate);
 	template <class TSecond, class TResult>
 	Queryable<TResult> Zip(Queryable<TSecond> second, std::function<TResult(T, TSecond)> resultSelector);
@@ -73,7 +74,6 @@ private:
 template<class T>
 inline Queryable<T>::Queryable(std::vector<T> vector_) : _vector(vector_)
 {
-
 }
 
 template<class T>
@@ -96,12 +96,20 @@ inline Queryable<T> Queryable<T>::operator=(Queryable<T> second)
 template<class T>
 inline T &Queryable<T>::operator[](size_t index)
 {
+	if (index >= this->Count())
+	{
+		throw std::out_of_range("Index out of range");
+	}
 	return _vector[index];
 }
 
 template<class T>
 inline T const & Queryable<T>::operator[](size_t index) const
 {
+	if (index >= this->Count())
+	{
+		throw std::out_of_range("Index out of range");
+	}
 	return _vector[index];
 }
 
@@ -118,7 +126,7 @@ inline void Queryable<T>::Add(T item)
 }
 
 template<class T>
-inline void Queryable<T>::AddRange(std::vector<T> list)
+inline void Queryable<T>::AddRange(std::vector<T> & list)
 {
 	for (T item : list)
 	{
@@ -127,9 +135,12 @@ inline void Queryable<T>::AddRange(std::vector<T> list)
 }
 
 template<class T>
-inline void Queryable<T>::AddRange(Queryable<T> list)
+inline void Queryable<T>::AddRange(Queryable<T> && list)
 {
-	this->AddRange(list.ToVector());
+	for (T item : list.ToVector())
+	{
+		this->Add(item);
+	}
 }
 
 template<class T>
@@ -170,7 +181,7 @@ template<class T>
 template<class TResult>
 inline Queryable<TResult> Queryable<T>::Cast()
 {
-	Queryable<TResult> q(std::vector<TResult>());
+	Queryable<TResult> q(std::vector<TResult>);
 	for (T item : _vector)
 	{
 		q.Add((TResult)item);
@@ -252,7 +263,7 @@ inline Queryable<T> Queryable<T>::Concat(Queryable<T> second)
 }
 
 template<class T>
-inline bool Queryable<T>::Contains(T item)
+inline bool Queryable<T>::Contains(T const & item) const
 {
 	for (T listitem : _vector)
 	{
@@ -277,7 +288,7 @@ inline size_t Queryable<T>::Count() const
 }
 
 template<class T>
-inline size_t Queryable<T>::Count(std::function<bool(T)> predicate)
+inline size_t Queryable<T>::Count(std::function<bool(T)> predicate) const
 {
 	int i = 0;
 	for (T item : _vector)
@@ -293,7 +304,7 @@ inline size_t Queryable<T>::Count(std::function<bool(T)> predicate)
 template<class T>
 inline Queryable<T> Queryable<T>::Distinct()
 {
-	Queryable<T> q(std::vector<T>());
+	Queryable<T> q(std::vector<T>);
 	for (T item : _vector)
 	{
 		if (!q.Contains(item))
@@ -313,7 +324,7 @@ inline T Queryable<T>::ElementAt(int number)
 template<class T>
 inline Queryable<T> Queryable<T>::Except(Queryable<T> second)
 {
-	Queryable<T> q(std::vector<T>());
+	Queryable<T> q(std::vector<T>);
 	for (T item : _vector)
 	{
 		if (!second.Contains(item) && !q.Contains(item))
@@ -325,13 +336,13 @@ inline Queryable<T> Queryable<T>::Except(Queryable<T> second)
 }
 
 template<class T>
-inline T Queryable<T>::First()
+inline T &Queryable<T>::First()
 {
 	return _vector[0];
 }
 
 template<class T>
-inline T Queryable<T>::First(std::function<bool(T)> predicate)
+inline T &Queryable<T>::First(std::function<bool(T)> predicate)
 {
 	for (T item : _vector)
 	{
@@ -363,13 +374,13 @@ inline int Queryable<T>::IndexOf(T item)
 template<class T>
 inline void Queryable<T>::Insert(int index, T item)
 {
-	_vector.insert(v.begin() + index, item);
+	_vector.insert(_vector.begin() + index, item);
 }
 
 template<class T>
 inline Queryable<T> Queryable<T>::Intersect(Queryable<T> second)
 {
-	Queryable<T> q(std::vector<T>());
+	Queryable<T> q(std::vector<T>);
 	for (T item : _vector)
 	{
 		if (second.Contains(item))
@@ -381,13 +392,13 @@ inline Queryable<T> Queryable<T>::Intersect(Queryable<T> second)
 }
 
 template<class T>
-inline T Queryable<T>::Last()
+inline T &Queryable<T>::Last()
 {
 	return _vector[_vector.size() - 1];
 }
 
 template<class T>
-inline T Queryable<T>::Last(std::function<bool(T)> predicate)
+inline T &Queryable<T>::Last(std::function<bool(T)> predicate)
 {
 	T last;
 	for (T item : _vector)
@@ -489,11 +500,11 @@ inline bool Queryable<T>::SequenceEqual(Queryable<T> second, IEqualityComparer<T
 }
 
 template<class T>
-inline T Queryable<T>::Single()
+inline T &Queryable<T>::Single()
 {
 	if (_vector.size() > 1)
 	{
-		throw std::exception("More than one element");
+		throw std::length_error("More than one element");
 	}
 	return _vector[0];
 }
@@ -501,7 +512,7 @@ inline T Queryable<T>::Single()
 template<class T>
 inline Queryable<T> Queryable<T>::Skip(int number)
 {
-	std::vector<T> v();
+	std::vector<T> v;
 	for (int i = number - 1; i < _vector.size(); i++)
 	{
 		v.insert(v.end(), _vector[i]);
@@ -517,14 +528,14 @@ inline Queryable<T> Queryable<T>::SkipWhile(std::function<bool(T)> predicate)
 	{
 		if (predicate(item) == true)
 		{
-			i++;
+			index++;
 		}
 		else
 		{
 			break;
 		}
 	}
-	std::vector<T> v();
+	std::vector<T> v;
 	for (int i = index; i < _vector.size(); i++)
 	{
 		v.insert(v.end(), _vector[i]);
@@ -560,17 +571,21 @@ inline Queryable<T> Queryable<T>::TakeWhile(std::function<bool(T)> predicate)
 	}
 	return Queryable<T>(v);
 }
-
 template<class T>
 inline std::vector<T> Queryable<T>::ToVector()
 {
 	return _vector;
 }
+template<class T>
+inline std::vector<T> Queryable<T>::ToVector() const
+{
+	return _vector;
+}
 
 template<class T>
-inline Queryable<T> Queryable<T>::Union(Queryable<T> second)
+inline Queryable<T> Queryable<T>::Union(Queryable<T> const & second) const
 {
-	Queryable<T> q(std::vector<T>());
+	Queryable<T> q;
 	for (T item : this->ToVector())
 	{
 		if (!q.Contains(item))
@@ -615,7 +630,7 @@ inline Queryable<TResult> Queryable<T>::Zip(Queryable<TSecond> second, std::func
 	{
 		min = _vector.size();
 	}
-	std::vector<TResult> v();
+	std::vector<TResult> v;
 	for (int i = 0; i < min; i++)
 	{
 		v.insert(v.end(), resultSelector(_vector[i], second.ToVector()[i]));
@@ -640,39 +655,35 @@ template <class TKey, class TValue>
 class KeyValuePair
 {
 public:
-	KeyValuePair(TKey key, TValue value);
-	TKey Key();
-	TValue Value();
+	KeyValuePair(TKey key_, TValue value_);
+	TKey key;
+	TValue value;
 private:
-	TKey _key;
-	TValue _value;
+
 };
 
 template<class TKey, class TValue>
-inline KeyValuePair<TKey, TValue>::KeyValuePair(TKey key, TValue value) : _key(key), _value(value)
+inline KeyValuePair<TKey, TValue>::KeyValuePair(TKey key_, TValue value_) : key(key_), value(value_)
 {
-}
-
-template<class TKey, class TValue>
-inline TKey KeyValuePair<TKey, TValue>::Key()
-{
-	return _key;
-}
-
-template<class TKey, class TValue>
-inline TValue KeyValuePair<TKey, TValue>::Value()
-{
-	return _value;
 }
 
 template <class TKey, class TValue>
-class Dictionary : Queryable<KeyValuePair<TKey, TValue>>
+class Dictionary : public Queryable<KeyValuePair<TKey, TValue>>
 {
 public:
+	Dictionary();
 	Dictionary(std::vector<KeyValuePair<TKey, TValue>> vector);
 	void Add(TKey key, TValue value);
+	void Add(KeyValuePair<TKey, TValue> item);
 private:
+	std::vector<KeyValuePair<TKey, TValue>> _vector;
 };
+
+template<class TKey, class TValue>
+inline Dictionary<TKey, TValue>::Dictionary()
+{
+	_vector = std::vector<KeyValuePair<TKey, TValue>>();
+}
 
 template<class TKey, class TValue>
 inline Dictionary<TKey, TValue>::Dictionary(std::vector<KeyValuePair<TKey, TValue>> vector) : _vector(vector)
@@ -683,6 +694,12 @@ template<class TKey, class TValue>
 inline void Dictionary<TKey, TValue>::Add(TKey key, TValue value)
 {
 	this->Add(KeyValuePair<TKey, TValue>(key, value));
+}
+
+template<class TKey, class TValue>
+inline void Dictionary<TKey, TValue>::Add(KeyValuePair<TKey, TValue> item)
+{
+	_vector.push_back(item);
 }
 
 template<class T1, class T2>
