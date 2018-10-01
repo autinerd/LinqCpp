@@ -1,4 +1,5 @@
 language: cpp
+script: make linux && make test
 compiler:
   - clang
   - gcc
