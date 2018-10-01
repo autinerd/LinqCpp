@@ -50,6 +50,7 @@ public:
 	Queryable<T> Intersect(Queryable<T> second);
 	T &Last();
 	T &Last(std::function<bool(T)> predicate);
+	Queryable<T> OrderBy(std::function<bool(T)> keySelector);
 	void Remove(T item);
 	void RemoveAll(T item);
 	void RemoveAt(int index);
@@ -409,6 +410,13 @@ inline T &Queryable<T>::Last(std::function<bool(T)> predicate)
 		}
 		return last;
 	}
+}
+
+template<class T>
+inline Queryable<T> Queryable<T>::OrderBy(std::function<bool(T)> keySelector)
+{
+	Queryable<T> q(this);
+
 }
 
 template<class T>
